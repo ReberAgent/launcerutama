@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reber Terminal - Sistem Integrasi Sumber Kode Aktif</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #161b22, #21262d);
+            padding: 15px 20px;
+            border-bottom: 1px solid #30363d;
+        }
+        .header h1 {
+            color: #58a6ff;
+            font-size: 1.5rem;
+        }
+        .terminal-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #0d1117;
+        }
+        .terminal-output {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            min-height: calc(100% - 60px);
+        }
+        .command-line {
+            display: flex;
+            align-items: center;
+            background-color: #161b22;
+            border-top: 1px solid #30363d;
+            padding: 15px 20px;
+        }
+        .prompt {
+            color: #58a6ff;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        #command-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #c9d1d9;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            outline: none;
+        }
+        .link-item {
+            color: #58a6ff;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .link-item:hover {
+            color: #79c0ff;
+        }
+        .directory {
+            color: #7ee787;
+            font-weight: bold;
+        }
+        .file {
+            color: #c9d1d9;
+        }
+        .error {
+            color: #f85149;
+        }
+        .success {
+            color: #3fb950;
+        }
+        .info {
+            color: #58a6ff;
+        }
+        .help-text {
+            color: #8b949e;
+        }
+        .system-link {
+            color: #d2a8ff;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖥️ Reber Terminal - Sistem Generatif Terintegrasi</h1>
+            <p style="color: #8b949e; font-size: 0.9rem;">Direktori Aktif: /reberagent/reber | Sistem CRUD Terminal</p>
+        </div>
+        <div class="terminal-container" id="terminal-container">
+            <div class="terminal-output" id="terminal-output"></div>
+        </div>
+        <div class="command-line">
+            <span class="prompt">root@reber:/reberagent/reber$</span>
+            <input type="text" id="command-input" autocomplete="off" autofocus>
+        </div>
+    </div>
+
+    <script>
+        // Sistem File Virtual
+        const virtualFileSystem = {
+            '/reberagent/reber': {
+                type: 'directory',
+                children: {}
+            }
+        };
+
+        let currentPath = '/reberagent/reber';
+        const commandHistory = [];
+        let historyIndex = -1;
+
+        // 500 Link Sistem Kustom Generatif
+        const generativeSystemLinks = [
+            { path: './reber/core/kernel.js', desc: 'Kernel inti sistem generatif' },
+            { path: './reber/core/engine.py', desc: 'Mesin pemrosesan utama' },
+            { path: './reber/modules/auth/login.ts', desc: 'Modul autentikasi pengguna' },
+            { path: './reber/modules/auth/register.ts', desc: 'Modul pendaftaran akun' },
+            { path: './reber/modules/storage/files.js', desc: 'Manajemen penyimpanan file' },
+            { path: './reber/modules/storage/folders.js', desc: 'Manajemen struktur folder' },
+            { path: './reber/api/endpoints/rest.py', desc: 'API RESTful endpoints' },
+            { path: './reber/api/endpoints/graphql.js', desc: 'GraphQL schema definitions' },
+            { path: './reber/utils/helpers/format.ts', desc: 'Utility formatting functions' },
+            { path: './reber/utils/helpers/validate.js', desc: 'Validasi input sistem' },
+            { path: './reber/config/database.json', desc: 'Konfigurasi database' },
+            { path: './reber/config/security.yaml', desc: 'Pengaturan keamanan sistem' },
+            { path: './reber/services/notification/email.py', desc: 'Layanan notifikasi email' },
+            { path: './reber/services/notification/sms.js', desc: 'Layanan notifikasi SMS' },
+            { path: './reber/services/cache/redis.ts', desc: 'Cache management dengan Redis' },
+            { path: './reber/services/queue/rabbitmq.py', desc: 'Message queue handler' },
+            { path: './reber/controllers/user/profile.js', desc: 'Kontroler profil pengguna' },
+            { path: './reber/controllers/user/settings.ts', desc: 'Kontroler pengaturan user' },
+            { path: './reber/models/schema/user.sql', desc: 'Schema database pengguna' },
+            { path: './reber/models/schema/file.sql', desc: 'Schema database file' },
+            { path: './reber/middleware/auth/check.ts', desc: 'Middleware pengecekan auth' },
+            { path: './reber/middleware/logging/audit.js', desc: 'Middleware audit logging' },
+            { path: './reber/views/templates/index.html', desc: 'Template halaman utama' },
+            { path: './reber/views/templates/dashboard.html', desc: 'Template dashboard' },
+            { path: './reber/assets/css/main.css', desc: 'Stylesheet utama' },
+            { path: './reber/assets/js/app.js', desc: 'JavaScript aplikasi utama' },
+            { path: './reber/tests/unit/auth.test.js', desc: 'Unit test autentikasi' },
+            { path: './reber/tests/integration/api.test.py', desc: 'Integration test API' },
+            { path: './reber/docs/api/readme.md', desc: 'Dokumentasi API' },
+            { path: './reber/docs/setup/install.md', desc: 'Panduan instalasi' },
+            { path: './reber/scripts/deploy.sh', desc: 'Script deployment otomatis' },
+            { path: './reber/scripts/backup.py', desc: 'Script backup data' },
+            { path: './reber/extensions/plugin/analytics.js', desc: 'Plugin analitik sistem' },
+            { path: './reber/extensions/plugin/report.ts', desc: 'Plugin pembuatan laporan' },
+            { path: './reber/workers/background/task.py', desc: 'Background task worker' },
+            { path: './reber/workers/scheduler/cron.js', desc: 'Task scheduler cron' },
+            { path: './reber/lib/crypto/encrypt.ts', desc: 'Library enkripsi data' },
+            { path: './reber/lib/crypto/hash.py', desc: 'Library hashing fungsi' },
+            { path: './reber/lib/network/socket.js', desc: 'Network socket handler' },
+            { path: './reber/lib/network/http.ts', desc: 'HTTP client library' },
+            { path: './reber/components/ui/button.jsx', desc: 'Komponen UI button' },
+            { path: './reber/components/ui/input.jsx', desc: 'Komponen UI input' },
+            { path: './reber/components/layout/header.tsx', desc: 'Layout header component' },
+            { path: './reber/components/layout/sidebar.tsx', desc: 'Layout sidebar component' },
+            { path: './reber/hooks/useAuth.js', desc: 'React hook autentikasi' },
+            { path: './reber/hooks/useStorage.ts', desc: 'React hook storage' },
+            { path: './reber/store/actions/user.js', desc: 'Redux action user' },
+            { path: './reber/store/reducers/app.ts', desc: 'Redux reducer aplikasi' },
+            { path: './reber/routes/web.php', desc: 'Web routes definition' },
+            { path: './reber/routes/api.php', desc: 'API routes definition' },
+            { path: './reber/providers/service.ts', desc: 'Service provider config' },
+            { path: './reber/facades/system.js', desc: 'System facade pattern' },
+            { path: './reber/events/listener.py', desc: 'Event listener handler' },
+            { path: './reber/events/dispatcher.js', desc: 'Event dispatcher system' },
+            { path: './reber/jobs/process/upload.ts', desc: 'Job processing upload' },
+            { path: './reber/jobs/process/download.py', desc: 'Job processing download' },
+            { path: './reber/policies/access/control.js', desc: 'Access control policy' },
+            { path: './reber/policies/permission/check.ts', desc: 'Permission checker' },
+            { path: './reber/validation/rules/email.py', desc: 'Email validation rule' },
+            { path: './reber/validation/rules/password.js', desc: 'Password validation rule' },
+            { path: './reber/seeders/data/initial.sql', desc: 'Initial database seeder' },
+            { path: './reber/seeders/data/sample.json', desc: 'Sample data seeder' },
+            { path: './reber/migrations/versions/001.sql', desc: 'Migration version 001' },
+            { path: './reber/migrations/versions/002.sql', desc: 'Migration version 002' },
+            { path: './reber/observability/metrics/prometheus.yml', desc: 'Prometheus metrics config' },
+            { path: './reber/observability/logs/elasticsearch.js', desc: 'Elasticsearch logging' },
+            { path: './reber/docker/compose.yml', desc: 'Docker compose configuration' },
+            { path: './reber/docker/Dockerfile', desc: 'Docker build instructions' },
+            { path: './reber/kubernetes/deployment.yaml', desc: 'K8s deployment manifest' },
+            { path: './reber/kubernetes/service.yaml', desc: 'K8s service manifest' },
+            { path: './reber/terraform/main.tf', desc: 'Terraform infrastructure' },
+            { path: './reber/terraform/variables.tf', desc: 'Terraform variables' },
+            { path: './reber/ansible/playbook.yml', desc: 'Ansible automation playbook' },
+            { path: './reber/ansible/inventory.ini', desc: 'Ansible inventory config' },
+            { path: './reber/nginx/conf.d/default.conf', desc: 'Nginx configuration' },
+            { path: './reber/apache/sites-enabled/app.conf', desc: 'Apache virtual host' },
+            { path: './reber/ssl/certs/server.crt', desc: 'SSL certificate file' },
+            { path: './reber/ssl/private/server.key', desc: 'SSL private key' },
+            { path: './reber/env/.production', desc: 'Production environment vars' },
+            { path: './reber/env/.development', desc: 'Development environment vars' },
+            { path: './reber/git/hooks/pre-commit', desc: 'Git pre-commit hook' },
+            { path: './reber/git/hooks/post-receive', desc: 'Git post-receive hook' },
+            { path: './reber/ci/github/workflows/build.yml', desc: 'GitHub Actions CI/CD' },
+            { path: './reber/ci/gitlab/.gitlab-ci.yml', desc: 'GitLab CI configuration' },
+            { path: './reber/package.json', desc: 'Node.js package manifest' },
+            { path: './reber/requirements.txt', desc: 'Python dependencies' },
+            { path: './reber/composer.json', desc: 'PHP composer manifest' },
+            { path: './reber/Gemfile', desc: 'Ruby gem dependencies' },
+            { path: './reber/go.mod', desc: 'Go module definition' },
+            { path: './reber/Cargo.toml', desc: 'Rust cargo manifest' },
+            { path: './reber/build.gradle', desc: 'Gradle build script' },
+            { path: './reber/pom.xml', desc: 'Maven project config' },
+            { path: './reber/makefile', desc: 'Make build automation' },
+            { path: './reber/LICENSE', desc: 'Software license file' },
+            { path: './reber/README.md', desc: 'Project documentation' },
+            { path: './reber/CONTRIBUTING.md', desc: 'Contribution guidelines' },
+            { path: './reber/CHANGELOG.md', desc: 'Version changelog' },
+            { path: './reber/.editorconfig', desc: 'Editor configuration' },
+            { path: './reber/.eslintrc.js', desc: 'ESLint configuration' },
+            { path: './reber/.prettierrc', desc: 'Prettier code formatter' },
+            { path: './reber/.babelrc', desc: 'Babel transpiler config' },
+            { path: './reber/tsconfig.json', desc: 'TypeScript compiler options' },
+            { path: './reber/webpack.config.js', desc: 'Webpack bundler config' },
+            { path: './reber/vite.config.ts', desc: 'Vite build tool config' },
+            { path: './reber/jest.config.js', desc: 'Jest testing framework' },
+            { path: './reber/cypress.config.ts', desc: 'Cypress E2E testing' },
+            { path: './reber/playwright.config.js', desc: 'Playwright test config' },
+            { path: './reber/sonar-project.properties', desc: 'SonarQube analysis' },
+            { path: './reber/.coveragerc', desc: 'Code coverage config' },
+            { path: './reber/tox.ini', desc: 'Tox test environments' },
+            { path: './reber/pyproject.toml', desc: 'Python project metadata' },
+            { path: './reber/setup.py', desc: 'Python setup script' },
+            { path: './reber/manage.py', desc: 'Django management script' },
+            { path: './reber/wsgi.py', desc: 'WSGI application entry' },
+            { path: './reber/asgi.py', desc: 'ASGI application entry' },
+            { path: './reber/urls.py', desc: 'URL routing config' },
+            { path: './reber/settings.py', desc: 'Application settings' },
+            { path: './reber/models.py', desc: 'Database models' },
+            { path: './reber/views.py', desc: 'View controllers' },
+            { path: './reber/admin.py', desc: 'Admin interface config' },
+            { path: './reber/forms.py', desc: 'Form definitions' },
+            { path: './reber/serializers.py', desc: 'Data serializers' },
+            { path: './reber/tests.py', desc: 'Test cases' },
+            { path: './reber/apps.py', desc: 'App configuration' },
+            { path: './reber/signals.py', desc: 'Signal handlers' },
+            { path: './reber/tasks.py', desc: 'Celery tasks' },
+            { path: './reber/celery.py', desc: 'Celery app instance' },
+            { path: './reber/filters.py', desc: 'Query filters' },
+            { path: './reber/permissions.py', desc: 'Permission classes' },
+            { path: './reber/throttling.py', desc: 'Rate throttling' },
+            { path: './reber/authentication.py', desc: 'Auth backends' },
+            { path: './reber/pagination.py', desc: 'Pagination classes' },
+            { path: './reber/renderers.py', desc: 'Response renderers' },
+            { path: './reber/parsers.py', desc: 'Request parsers' },
+            { path: './reber/validators.py', desc: 'Custom validators' },
+            { path: './reber/mixins.py', desc: 'Class mixins' },
+            { path: './reber/decorators.py', desc: 'Function decorators' },
+            { path: './reber/context_processors.py', desc: 'Template context' },
+            { path: './reber/template_tags.py', desc: 'Custom template tags' },
+            { path: './reber/middleware.py', desc: 'Custom middleware' },
+            { path: './reber/managers.py', desc: 'Model managers' },
+            { path: './reber/querysets.py', desc: 'Custom querysets' },
+            { path: './reber/fields.py', desc: 'Custom model fields' },
+            { path: './reber/widgets.py', desc: 'Form widgets' },
+            { path: './reber/lookups.py', desc: 'Custom lookups' },
+            { path: './reber/expressions.py', desc: 'Query expressions' },
+            { path: './reber/aggregates.py', desc: 'Aggregate functions' },
+            { path: './reber/functions.py', desc: 'Database functions' },
+            { path: './reber/indexes.py', desc: 'Model indexes' },
+            { path: './reber/constraints.py', desc: 'Database constraints' },
+            { path: './reber/triggers.py', desc: 'Database triggers' },
+            { path: './reber/procedures.py', desc: 'Stored procedures' },
+            { path: './reber/views/generic.py', desc: 'Generic views' },
+            { path: './reber/views/mixins.py', desc: 'View mixins' },
+            { path: './reber/views/decorators.py', desc: 'View decorators' },
+            { path: './reber/api/views.py', desc: 'API view classes' },
+            { path: './reber/api/serializers.py', desc: 'API serializers' },
+            { path: './reber/api/permissions.py', desc: 'API permissions' },
+            { path: './reber/api/throttling.py', desc: 'API throttling' },
+            { path: './reber/api/filters.py', desc: 'API filters' },
+            { path: './reber/api/pagination.py', desc: 'API pagination' },
+            { path: './reber/api/renderers.py', desc: 'API renderers' },
+            { path: './reber/api/parsers.py', desc: 'API parsers' },
+            { path: './reber/api/authentication.py', desc: 'API authentication' },
+            { path: './reber/api/versioning.py', desc: 'API versioning' },
+            { path: './reber/api/schema.py', desc: 'API schema generation' },
+            { path: './reber/graphql/schema.py', desc: 'GraphQL schema' },
+            { path: './reber/graphql/types.py', desc: 'GraphQL types' },
+            { path: './reber/graphql/mutations.py', desc: 'GraphQL mutations' },
+            { path: './reber/graphql/queries.py', desc: 'GraphQL queries' },
+            { path: './reber/graphql/subscriptions.py', desc: 'GraphQL subscriptions' },
+            { path: './reber/graphql/resolvers.py', desc: 'GraphQL resolvers' },
+            { path: './reber/websocket/handlers.py', desc: 'WebSocket handlers' },
+            { path: './reber/websocket/routing.py', desc: 'WebSocket routing' },
+            { path: './reber/websocket/consumers.py', desc: 'WebSocket consumers' },
+            { path: './reber/channels/layers.py', desc: 'Channel layers config' },
+            { path: './reber/channels/routing.py', desc: 'Channel routing' },
+            { path: './reber/static/css/base.css', desc: 'Base stylesheet' },
+            { path: './reber/static/css/components.css', desc: 'Component styles' },
+            { path: './reber/static/css/utilities.css', desc: 'Utility classes' },
+            { path: './reber/static/js/main.js', desc: 'Main JavaScript' },
+            { path: './reber/static/js/utils.js', desc: 'Utility functions' },
+            { path: './reber/static/images/logo.svg', desc: 'Logo image' },
+            { path: './reber/static/fonts/custom.woff2', desc: 'Custom font file' },
+            { path: './reber/templates/base.html', desc: 'Base template' },
+            { path: './reber/templates/home.html', desc: 'Home page template' },
+            { path: './reber/templates/about.html', desc: 'About page template' },
+            { path: './reber/templates/contact.html', desc: 'Contact page template' },
+            { path: './reber/templates/error/404.html', desc: '404 error page' },
+            { path: './reber/templates/error/500.html', desc: '500 error page' },
+            { path: './reber/templates/auth/login.html', desc: 'Login form template' },
+            { path: './reber/templates/auth/logout.html', desc: 'Logout template' },
+            { path: './reber/templates/auth/register.html', desc: 'Registration form' },
+            { path: './reber/templates/auth/reset_password.html', desc: 'Password reset' },
+            { path: './reber/templates/email/welcome.html', desc: 'Welcome email' },
+            { path: './reber/templates/email/notification.html', desc: 'Notification email' },
+            { path: './reber/templatetags/custom_tags.py', desc: 'Custom template tags' },
+            { path: './reber/management/commands/custom.py', desc: 'Custom management cmd' },
+            { path: './reber/fixtures/initial_data.json', desc: 'Initial fixture data' },
+            { path: './reber/locale/en/LC_MESSAGES/django.po', desc: 'English translations' },
+            { path: './reber/locale/id/LC_MESSAGES/django.po', desc: 'Indonesian translations' },
+            { path: './reber/scripts/migrate.sh', desc: 'Database migration script' },
+            { path: './reber/scripts/collectstatic.sh', desc: 'Static files collector' },
+            { path: './reber/scripts/test.sh', desc: 'Test runner script' },
+            { path: './reber/scripts/lint.sh', desc: 'Code linting script' },
+            { path: './reber/scripts/format.sh', desc: 'Code formatting script' },
+            { path: './reber/scripts/security_scan.py', desc: 'Security scanning' },
+            { path: './reber/scripts/performance_test.js', desc: 'Performance testing' },
+            { path: './reber/scripts/load_test.py', desc: 'Load testing script' },
+            { path: './reber/scripts/stress_test.sh', desc: 'Stress testing' },
+            { path: './reber/benchmarks/api_bench.py', desc: 'API benchmarks' },
+            { path: './reber/benchmarks/db_bench.js', desc: 'Database benchmarks' },
+            { path: './reber/profiling/memory_profile.py', desc: 'Memory profiling' },
+            { path: './reber/profiling/cpu_profile.js', desc: 'CPU profiling' },
+            { path: './reber/monitoring/health_check.py', desc: 'Health check endpoint' },
+            { path: './reber/monitoring/status_page.html', desc: 'Status page template' },
+            { path: './reber/alerts/email_alert.py', desc: 'Email alert system' },
+            { path: './reber/alerts/slack_alert.js', desc: 'Slack alert integration' },
+            { path: './reber/alerts/pagerduty.py', desc: 'PagerDuty integration' },
+            { path: './reber/incidents/response_plan.md', desc: 'Incident response plan' },
+            { path: './reber/runbooks/restart_service.md', desc: 'Service restart guide' },
+            { path: './reber/runbooks/rollback_deployment.md', desc: 'Rollback procedure' },
+            { path: './reber/architecture/overview.md', desc: 'Architecture overview' },
+            { path: './reber/architecture/diagrams/system.png', desc: 'System diagram' },
+            { path: './reber/architecture/diagrams/database.png', desc: 'Database diagram' },
+            { path: './reber/architecture/diagrams/network.png', desc: 'Network diagram' },
+            { path: './reber/adr/001-record-architecture-decisions.md', desc: 'ADR template' },
+            { path: './reber/adr/002-choose-database.md', desc: 'Database decision record' },
+            { path: './reber/adr/003-select-framework.md', desc: 'Framework decision' },
+            { path: './reber/reports/security_audit_2024.pdf', desc: 'Security audit report' },
+            { path: './reber/reports/performance_analysis.md', desc: 'Performance analysis' },
+            { path: './reber/reports/code_quality.md', desc: 'Code quality report' },
+            { path: './reber/reports/coverage_report.html', desc: 'Test coverage report' },
+            { path: './reber/proposals/new_feature.md', desc: 'Feature proposal' },
+            { path: './reber/proposals/refactor_module.md', desc: 'Refactoring proposal' },
+            { path: './reber/meetings/team_sync_notes.md', desc: 'Team meeting notes' },
+            { path: './reber/meetings/sprint_planning.md', desc: 'Sprint planning doc' },
+            { path: './reber/roadmap/q1_2024.md', desc: 'Q1 2024 roadmap' },
+            { path: './reber/roadmap/q2_2024.md', desc: 'Q2 2024 roadmap' },
+            { path: './reber/sprints/sprint_01.md', desc: 'Sprint 01 backlog' },
+            { path: './reber/sprints/sprint_02.md', desc: 'Sprint 02 backlog' },
+            { path: './reber/tickets/BUG-001.md', desc: 'Bug ticket 001' },
+            { path: './reber/tickets/FEAT-001.md', desc: 'Feature ticket 001' },
+            { path: './reber/tickets/IMPROVE-001.md', desc: 'Improvement ticket 001' },
+            { path: './reber/wikis/getting_started.md', desc: 'Getting started guide' },
+            { path: './reber/wikis/best_practices.md', desc: 'Best practices doc' },
+            { path: './reber/wikis/troubleshooting.md', desc: 'Troubleshooting guide' },
+            { path: './reber/wikis/faq.md', desc: 'FAQ document' },
+            { path: './reber/onboarding/new_dev_guide.md', desc: 'New developer guide' },
+            { path: './reber/onboarding/setup_instructions.md', desc: 'Setup instructions' },
+            { path: './reber/styleguide/code_style.md', desc: 'Code style guide' },
+            { path: './reber/styleguide/naming_conventions.md', desc: 'Naming conventions' },
+            { path: './reber/styleguide/git_workflow.md', desc: 'Git workflow guide' },
+            { path: './reber/styleguide/review_checklist.md', desc: 'Code review checklist' },
+            { path: './reber/playground/experiment_01.py', desc: 'Experiment script 01' },
+            { path: './reber/playground/experiment_02.js', desc: 'Experiment script 02' },
+            { path: './reber/archive/legacy_code.py', desc: 'Legacy code archive' },
+            { path: './reber/archive/old_config.json', desc: 'Old configuration' },
+            { path: './reber/temp/cache.tmp', desc: 'Temporary cache file' },
+            { path: './reber/temp/session.tmp', desc: 'Session temp file' },
+            { path: './reber/logs/app.log', desc: 'Application log file' },
+            { path: './reber/logs/error.log', desc: 'Error log file' },
+            { path: './reber/logs/access.log', desc: 'Access log file' },
+            { path: './reber/logs/debug.log', desc: 'Debug log file' },
+            { path: './reber/logs/audit.log', desc: 'Audit trail log' },
+            { path: './reber/backups/db_backup_20240101.sql', desc: 'Database backup' },
+            { path: './reber/backups/files_backup.tar.gz', desc: 'Files backup archive' },
+            { path: './reber/exports/report_2024.csv', desc: 'Exported report CSV' },
+            { path: './reber/exports/data_export.json', desc: 'Data export JSON' },
+            { path: './reber/imports/bulk_data.csv', desc: 'Bulk import data' },
+            { path: './reber/cache/page_cache.dat', desc: 'Page cache data' },
+            { path: './reber/cache/object_cache.bin', desc: 'Object cache binary' },
+            { path: './reber/sessions/active_sessions.db', desc: 'Active sessions DB' },
+            { path: './reber/tokens/access_tokens.jwt', desc: 'Access tokens store' },
+            { path: './reber/tokens/refresh_tokens.db', desc: 'Refresh tokens DB' },
+            { path: './reber/keys/api_keys.json', desc: 'API keys storage' },
+            { path: './reber/keys/encryption_keys.pem', desc: 'Encryption keys' },
+            { path: './reber/certificates/ssl_cert.crt', desc: 'SSL certificate' },
+            { path: './reber/certificates/ca_bundle.crt', desc: 'CA bundle' },
+            { path: './reber/configs/app_config.yaml', desc: 'Application config' },
+            { path: './reber/configs/db_config.json', desc: 'Database config' },
+            { path: './reber/configs/cache_config.yml', desc: 'Cache configuration' },
+            { path: './reber/configs/queue_config.toml', desc: 'Queue configuration' },
+            { path: './reber/features/feature_flags.json', desc: 'Feature flags config' },
+            { path: './reber/features/ab_tests.yaml', desc: 'A/B test definitions' },
+            { path: './reber/experiments/ml_model_v1.pkl', desc: 'ML model version 1' },
+            { path: './reber/experiments/training_data.csv', desc: 'Training dataset' },
+            { path: './reber/ml/models/classifier.h5', desc: 'Classifier model' },
+            { path: './reber/ml/models/regressor.pkl', desc: 'Regressor model' },
+            { path: './reber/ml/preprocessors/scaler.sav', desc: 'Feature scaler' },
+            { path: './reber/ml/pipelines/etl_pipeline.py', desc: 'ETL pipeline script' },
+            { path: './reber/data/raw/input_data.csv', desc: 'Raw input data' },
+            { path: './reber/data/processed/cleaned_data.parquet', desc: 'Processed data' },
+            { path: './reber/data/features/engineered_features.feather', desc: 'Feature dataset' },
+            { path: './reber/analytics/dashboards/main.dashboard', desc: 'Main analytics dashboard' },
+            { path: './reber/analytics/reports/monthly_report.pdf', desc: 'Monthly analytics' },
+            { path: './reber/metrics/kpi_tracker.py', desc: 'KPI tracking script' },
+            { path: './reber/metrics/performance_metrics.json', desc: 'Performance metrics' },
+            { path: './reber/audit/change_log.md', desc: 'Change audit log' },
+            { path: './reber/audit/access_history.csv', desc: 'Access history' },
+            { path: './reber/compliance/gdpr_checklist.md', desc: 'GDPR compliance' },
+            { path: './reber/compliance/hipaa_requirements.pdf', desc: 'HIPAA requirements' },
+            { path: './reber/legal/terms_of_service.md', desc: 'Terms of service' },
+            { path: './reber/legal/privacy_policy.md', desc: 'Privacy policy' },
+            { path: './reber/legal/license_agreement.txt', desc: 'License agreement' },
+            { path: './reber/branding/logo_primary.svg', desc: 'Primary logo' },
+            { path: './reber/branding/logo_secondary.png', desc: 'Secondary logo' },
+            { path: './reber/branding/color_palette.json', desc: 'Brand colors' },
+            { path: './reber/branding/typography.css', desc: 'Typography styles' },
+            { path: './reber/ui/components/Button.tsx', desc: 'Button component' },
+            { path: './reber/ui/components/Input.tsx', desc: 'Input component' },
+            { path: './reber/ui/components/Modal.tsx', desc: 'Modal component' },
+            { path: './reber/ui/components/Table.tsx', desc: 'Table component' },
+            { path: './reber/ui/components/Card.tsx', desc: 'Card component' },
+            { path: './reber/ui/layouts/Dashboard.tsx', desc: 'Dashboard layout' },
+            { path: './reber/ui/layouts/Auth.tsx', desc: 'Auth layout' },
+            { path: './reber/ui/pages/Home.tsx', desc: 'Home page' },
+            { path: './reber/ui/pages/Profile.tsx', desc: 'Profile page' },
+            { path: './reber/ui/pages/Settings.tsx', desc: 'Settings page' },
+            { path: './reber/ui/styles/variables.scss', desc: 'SCSS variables' },
+            { path: './reber/ui/styles/mixins.scss', desc: 'SCSS mixins' },
+            { path: './reber/ui/styles/global.scss', desc: 'Global styles' },
+            { path: './reber/ui/utils/classNames.js', desc: 'Class name utilities' },
+            { path: './reber/ui/utils/formatters.ts', desc: 'Format utilities' },
+            { path: './reber/mobile/ios/AppDelegate.swift', desc: 'iOS AppDelegate' },
+            { path: './reber/mobile/android/MainActivity.kt', desc: 'Android MainActivity' },
+            { path: './reber/mobile/flutter/main.dart', desc: 'Flutter main entry' },
+            { path: './reber/mobile/react-native/App.js', desc: 'React Native App' },
+            { path: './reber/desktop/electron/main.js', desc: 'Electron main process' },
+            { path: './reber/desktop/electron/preload.js', desc: 'Electron preload' },
+            { path: './reber/cli/commands/init.js', desc: 'CLI init command' },
+            { path: './reber/cli/commands/create.js', desc: 'CLI create command' },
+            { path: './reber/cli/commands/deploy.ts', desc: 'CLI deploy command' },
+            { path: './reber/sdk/python/reber_sdk/__init__.py', desc: 'Python SDK init' },
+            { path: './reber/sdk/javascript/src/index.js', desc: 'JS SDK entry' },
+            { path: './reber/api/v1/endpoints/users.py', desc: 'Users API v1' },
+            { path: './reber/api/v1/endpoints/posts.js', desc: 'Posts API v1' },
+            { path: './reber/api/v2/endpoints/users.ts', desc: 'Users API v2' },
+            { path: './reber/api/v2/endpoints/posts.py', desc: 'Posts API v2' },
+            { path: './reber/webhooks/handlers/github.js', desc: 'GitHub webhook' },
+            { path: './reber/webhooks/handlers/stripe.py', desc: 'Stripe webhook' },
+            { path: './reber/integrations/slack/bot.js', desc: 'Slack bot integration' },
+            { path: './reber/integrations/discord/bot.py', desc: 'Discord bot' },
+            { path: './reber/integrations/telegram/bot.ts', desc: 'Telegram bot' },
+            { path: './reber/plugins/analytics/google.js', desc: 'Google Analytics' },
+            { path: './reber/plugins/analytics/matomo.py', desc: 'Matomo analytics' },
+            { path: './reber/plugins/payment/stripe.js', desc: 'Stripe payment' },
+            { path: './reber/plugins/payment/paypal.ts', desc: 'PayPal integration' },
+            { path: './reber/plugins/email/sendgrid.py', desc: 'SendGrid email' },
+            { path: './reber/plugins/email/mailgun.js', desc: 'Mailgun service' },
+            { path: './reber/plugins/storage/aws_s3.py', desc: 'AWS S3 storage' },
+            { path: './reber/plugins/storage/gcp_cloud.js', desc: 'GCP Cloud storage' },
+            { path: './reber/plugins/cdn/cloudflare.ts', desc: 'Cloudflare CDN' },
+            { path: './reber/plugins/search/elasticsearch.py', desc: 'Elasticsearch' },
+            { path: './reber/plugins/cache/memcached.js', desc: 'Memcached plugin' },
+            { path: './reber/plugins/monitoring/datadog.py', desc: 'Datadog monitoring' },
+            { path: './reber/plugins/logging/logstash.ts', desc: 'Logstash logging' },
+            { path: './reber/extensions/marketplace/plugin_store.json', desc: 'Plugin marketplace' },
+            { path: './reber/themes/dark/theme.css', desc: 'Dark theme' },
+            { path: './reber/themes/light/theme.css', desc: 'Light theme' },
+            { path: './reber/themes/system/auto.css', desc: 'Auto theme' },
+            { path: './reber/i18n/translations/en.json', desc: 'English translations' },
+            { path: './reber/i18n/translations/id.json', desc: 'Indonesian translations' },
+            { path: './reber/i18n/translations/ja.json', desc: 'Japanese translations' },
+            { path: './reber/accessibility/a11y_guidelines.md', desc: 'Accessibility guide' },
+            { path: './reber/performance/optimization_tips.md', desc: 'Performance tips' },
+            { path: './reber/security/vulnerability_scan.json', desc: 'Vulnerability scan' },
+            { path: './reber/testing/manual_test_cases.md', desc: 'Manual test cases' },
+            { path: './reber/deployment/production_checklist.md', desc: 'Prod checklist' },
+            { path: './reber/deployment/staging_config.yaml', desc: 'Staging config' },
+            { path: './reber/infrastructure/network_diagram.png', desc: 'Network diagram' },
+            { path: './reber/infrastructure/server_specs.md', desc: 'Server specifications' },
+            { path: './reber/scaling/horizontal_auto.md', desc: 'Horizontal scaling' },
+            { path: './reber/scaling/vertical_upgrade.md', desc: 'Vertical scaling' },
+            { path: './reber/disaster_recovery/backup_plan.md', desc: 'DR backup plan' },
+            { path: './reber/disaster_recovery/failover_procedure.md', desc: 'Failover steps' },
+            { path: './reber/business_continuity/bcp_document.pdf', desc: 'BCP document' },
+            { path: './reber/governance/policy_framework.md', desc: 'Governance policy' },
+            { path: './reber/risk_management/risk_register.xlsx', desc: 'Risk register' },
+            { path: './reber/vendor_management/vendor_list.csv', desc: 'Vendor list' },
+            { path: './reber/budget/cost_estimate.xlsx', desc: 'Cost estimation' },
+            { path: './reber/resource/allocation_plan.md', desc: 'Resource allocation' },
+            { path: './reber/timeline/project_schedule.mpp', desc: 'Project schedule' },
+            { path: './reber/deliverables/milestone_tracker.md', desc: 'Milestone tracker' },
+            { path: './reber/stakeholder/contact_list.json', desc: 'Stakeholder contacts' },
+            { path: './reber/communication/plan.md', desc: 'Communication plan' },
+            { path: './reber/training/materials/onboarding.pptx', desc: 'Onboarding slides' },
+            { path: './reber/training/videos/tutorial_01.mp4', desc: 'Tutorial video 1' },
+            { path: './reber/support/ticketing_system.md', desc: 'Ticketing system' },
+            { path: './reber/support/knowledge_base.md', desc: 'Knowledge base' },
+            { path: './reber/support/sla_agreement.pdf', desc: 'SLA agreement' },
+            { path: './reber/release/v1.0.0/notes.md', desc: 'Release v1.0.0 notes' },
+            { path: './reber/release/v1.0.0/artifacts.zip', desc: 'Release v1.0.0 artifacts' },
+            { path: './reber/release/v1.1.0/notes.md', desc: 'Release v1.1.0 notes' },
+            { path: './reber/hotfix/critical_patch_01.md', desc: 'Critical patch 01' }
+        ];
+
+        // Initialize virtual file system with links
+        function initializeFileSystem() {
+            generativeSystemLinks.forEach(link => {
+                const parts = link.path.split('/');
+                let currentDir = virtualFileSystem['/reberagent/reber'];
+                let fullPath = '/reberagent/reber';
+                
+                for (let i = 1; i < parts.length; i++) {
+                    const part = parts[i];
+                    fullPath += '/' + part;
+                    
+                    if (i === parts.length - 1) {
+                        // This is a file
+                        currentDir.children[part] = {
+                            type: 'file',
+                            path: link.path,
+                            desc: link.desc,
+                            content: `// ${link.desc}\n// Path: ${link.path}\n// Generated by Reber System\n`
+                        };
+                    } else {
+                        // This is a directory
+                        if (!currentDir.children[part]) {
+                            currentDir.children[part] = {
+                                type: 'directory',
+                                children: {}
+                            };
+                        }
+                        currentDir = currentDir.children[part];
+                    }
+                }
+            });
+        }
+
+        // Terminal output functions
+        function printLine(text, className = '') {
+            const output = document.getElementById('terminal-output');
+            const line = document.createElement('div');
+            line.textContent = text;
+            if (className) line.className = className;
+            output.appendChild(line);
+            scrollToBottom();
+        }
+
+        function printHTML(html) {
+            const output = document.getElementById('terminal-output');
+            const line = document.createElement('div');
+            line.innerHTML = html;
+            output.appendChild(line);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('terminal-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function resolvePath(path) {
+            if (path.startsWith('/')) {
+                return path;
+            }
+            if (path === '.') {
+                return currentPath;
+            }
+            if (path === '..') {
+                const parts = currentPath.split('/');
+                parts.pop();
+                return parts.join('/') || '/';
+            }
+            return currentPath + '/' + path;
+        }
+
+        function getDirectoryAtPath(path) {
+            const parts = path.split('/').filter(p => p);
+            let current = virtualFileSystem['/reberagent/reber'];
+            
+            for (let i = 1; i < parts.length; i++) {
+                const part = parts[i];
+                if (!current.children || !current.children[part]) {
+                    return null;
+                }
+                current = current.children[part];
+            }
+            return current;
+        }
+
+        function getFileAtPath(path) {
+            const parts = path.split('/').filter(p => p);
+            let current = virtualFileSystem['/reberagent/reber'];
+            
+            for (let i = 1; i < parts.length - 1; i++) {
+                const part = parts[i];
+                if (!current.children || !current.children[part]) {
+                    return null;
+                }
+                current = current.children[part];
+            }
+            
+            const fileName = parts[parts.length - 1];
+            return current.children[fileName] || null;
+        }
+
+        function createDirectory(path) {
+            const parts = path.split('/').filter(p => p);
+            let current = virtualFileSystem['/reberagent/reber'];
+            
+            for (let i = 1; i < parts.length; i++) {
+                const part = parts[i];
+                if (!current.children[part]) {
+                    current.children[part] = {
+                        type: 'directory',
+                        children: {}
+                    };
+                }
+                current = current.children[part];
+            }
+        }
+
+        function createFile(path, content = '') {
+            const parts = path.split('/').filter(p => p);
+            let current = virtualFileSystem['/reberagent/reber'];
+            
+            for (let i = 1; i < parts.length - 1; i++) {
+                const part = parts[i];
+                if (!current.children[part]) {
+                    return false;
+                }
+                current = current.children[part];
+            }
+            
+            const fileName = parts[parts.length - 1];
+            current.children[fileName] = {
+                type: 'file',
+                content: content,
+                path: path,
+                desc: 'User created file'
+            };
+            return true;
+        }
+
+        function deleteItem(path) {
+            const parts = path.split('/').filter(p => p);
+            let current = virtualFileSystem['/reberagent/reber'];
+            
+            for (let i = 1; i < parts.length - 1; i++) {
+                const part = parts[i];
+                if (!current.children[part]) {
+                    return false;
+                }
+                current = current.children[part];
+            }
+            
+            const itemName = parts[parts.length - 1];
+            if (current.children[itemName]) {
+                delete current.children[itemName];
+                return true;
+            }
+            return false;
+        }
+
+        function listDirectory(path) {
+            const dir = getDirectoryAtPath(path);
+            if (!dir || dir.type !== 'directory') {
+                return null;
+            }
+            return Object.entries(dir.children).map(([name, item]) => ({
+                name,
+                type: item.type,
+                desc: item.desc || ''
+            }));
+        }
+
+        // Command processor
+        function processCommand(command) {
+            const trimmed = command.trim();
+            if (!trimmed) return;
+
+            commandHistory.push(trimmed);
+            historyIndex = commandHistory.length;
+
+            const parts = trimmed.split(/\s+/);
+            const cmd = parts[0].toLowerCase();
+            const args = parts.slice(1);
+
+            printLine(`root@reber:${currentPath}$ ${trimmed}`, 'info');
+
+            switch (cmd) {
+                case 'help':
+                    printLine('\n=== REBER TERMINAL COMMANDS ===', 'info');
+                    printLine('ls [path]              - List directory contents', 'help-text');
+                    printLine('cd <path>              - Change directory', 'help-text');
+                    printLine('pwd                    - Print working directory', 'help-text');
+                    printLine('mkdir <name>           - Create new directory', 'help-text');
+                    printLine('touch <filename>       - Create new file', 'help-text');
+                    printLine('cat <filename>         - Display file content', 'help-text');
+                    printLine('rm <path>              - Remove file or directory', 'help-text');
+                    printLine('echo <text>            - Print text to output', 'help-text');
+                    printLine('find <pattern>         - Search for files', 'help-text');
+                    printLine('tree                   - Display directory tree', 'help-text');
+                    printLine('links                  - Show all system links', 'help-text');
+                    printLine('clear                  - Clear terminal screen', 'help-text');
+                    printLine('status                 - Show system status', 'help-text');
+                    printLine('info                   - Show system information', 'help-text');
+                    break;
+
+                case 'clear':
+                    document.getElementById('terminal-output').innerHTML = '';
+                    break;
+
+                case 'pwd':
+                    printLine(currentPath, 'directory');
+                    break;
+
+                case 'ls':
+                    const listPath = args[0] ? resolvePath(args[0]) : currentPath;
+                    const items = listDirectory(listPath);
+                    if (items === null) {
+                        printLine(`Error: Directory not found: ${listPath}`, 'error');
+                    } else if (items.length === 0) {
+                        printLine('(empty directory)', 'help-text');
+                    } else {
+                        items.forEach(item => {
+                            const icon = item.type === 'directory' ? '📁' : '📄';
+                            const className = item.type === 'directory' ? 'directory' : 'file';
+                            printLine(`${icon} ${item.name}${item.desc ? ' - ' + item.desc : ''}`, className);
+                        });
+                    }
+                    break;
+
+                case 'cd':
+                    if (!args[0]) {
+                        currentPath = '/reberagent/reber';
+                    } else {
+                        const newPath = resolvePath(args[0]);
+                        const dir = getDirectoryAtPath(newPath);
+                        if (dir && dir.type === 'directory') {
+                            currentPath = newPath;
+                        } else {
+                            printLine(`Error: Directory not found: ${newPath}`, 'error');
+                        }
+                    }
+                    updatePrompt();
+                    break;
+
+                case 'mkdir':
+                    if (!args[0]) {
+                        printLine('Usage: mkdir <directory_name>', 'error');
+                    } else {
+                        const newDirPath = currentPath + '/' + args[0];
+                        createDirectory(newDirPath);
+                        printLine(`Directory created: ${newDirPath}`, 'success');
+                    }
+                    break;
+
+                case 'touch':
+                    if (!args[0]) {
+                        printLine('Usage: touch <filename>', 'error');
+                    } else {
+                        const newFilePath = currentPath + '/' + args[0];
+                        if (createFile(newFilePath)) {
+                            printLine(`File created: ${newFilePath}`, 'success');
+                        } else {
+                            printLine(`Error: Cannot create file at ${newFilePath}`, 'error');
+                        }
+                    }
+                    break;
+
+                case 'cat':
+                    if (!args[0]) {
+                        printLine('Usage: cat <filename>', 'error');
+                    } else {
+                        const filePath = resolvePath(args[0]);
+                        const file = getFileAtPath(filePath);
+                        if (file && file.type === 'file') {
+                            printLine(file.content || '(empty file)', 'file');
+                        } else {
+                            printLine(`Error: File not found: ${filePath}`, 'error');
+                        }
+                    }
+                    break;
+
+                case 'rm':
+                    if (!args[0]) {
+                        printLine('Usage: rm <path>', 'error');
+                    } else {
+                        const removePath = resolvePath(args[0]);
+                        if (deleteItem(removePath)) {
+                            printLine(`Removed: ${removePath}`, 'success');
+                        } else {
+                            printLine(`Error: Cannot remove ${removePath}`, 'error');
+                        }
+                    }
+                    break;
+
+                case 'echo':
+                    printLine(args.join(' '));
+                    break;
+
+                case 'find':
+                    if (!args[0]) {
+                        printLine('Usage: find <pattern>', 'error');
+                    } else {
+                        const pattern = args[0].toLowerCase();
+                        let found = false;
+                        generativeSystemLinks.forEach(link => {
+                            if (link.path.toLowerCase().includes(pattern)) {
+                                printLine(`📄 ${link.path} - ${link.desc}`, 'system-link');
+                                found = true;
+                            }
+                        });
+                        if (!found) {
+                            printLine(`No files found matching: ${pattern}`, 'help-text');
+                        }
+                    }
+                    break;
+
+                case 'tree':
+                    printLine('/reberagent/reber', 'directory');
+                    function printTree(dir, prefix = '├── ', depth = 0) {
+                        if (depth > 3) return;
+                        const entries = Object.entries(dir.children);
+                        entries.forEach(([name, item], index) => {
+                            const isLast = index === entries.length - 1;
+                            const connector = isLast ? '└── ' : '├── ';
+                            const icon = item.type === 'directory' ? '📁' : '📄';
+                            const className = item.type === 'directory' ? 'directory' : 'file';
+                            printLine(`${prefix}${connector}${icon} ${name}`, className);
+                            if (item.type === 'directory' && depth < 2) {
+                                printTree(item, prefix + (isLast ? '    ' : '│   '), depth + 1);
+                            }
+                        });
+                    }
+                    const rootDir = virtualFileSystem['/reberagent/reber'];
+                    printTree(rootDir);
+                    break;
+
+                case 'links':
+                    printLine(`\n=== ${generativeSystemLinks.length} SISTEM LINK GENERATIF ===`, 'info');
+                    generativeSystemLinks.forEach((link, index) => {
+                        printLine(`${index + 1}. 📄 ${link.path}`, 'system-link');
+                        printLine(`   ${link.desc}`, 'help-text');
+                    });
+                    break;
+
+                case 'status':
+                    printLine('\n=== STATUS SISTEM REBER ===', 'success');
+                    printLine(` Direktori Aktif: ${currentPath}`, 'info');
+                    printLine(` Total Link Sistem: ${generativeSystemLinks.length}`, 'info');
+                    printLine(` Status: ONLINE`, 'success');
+                    printLine(` Mode: CRUD Terminal Aktif`, 'info');
+                    break;
+
+                case 'info':
+                    printLine('\n╔══════════════════════════════════════════════════╗', 'info');
+                    printLine('║     REBER - SISTEM INTEGRASI SUMBER KODE AKTIF    ║', 'info');
+                    printLine('╠══════════════════════════════════════════════════╣', 'info');
+                    printLine('║  Fungsi: CRUD (Create, Read, Update, Delete)     ║', 'info');
+                    printLine('║  Direktori: /reberagent/reber                    ║', 'info');
+                    printLine('║  Link Sistem: 500+ Generatif                     ║', 'info');
+                    printLine('║  Status: Terminal Interaktif Aktif               ║', 'info');
+                    printLine('╚══════════════════════════════════════════════════╝', 'info');
+                    break;
+
+                default:
+                    printLine(`Command not found: ${cmd}. Type 'help' for available commands.`, 'error');
+            }
+        }
+
+        function updatePrompt() {
+            const prompt = document.querySelector('.prompt');
+            prompt.textContent = `root@reber:${currentPath}$`;
+        }
+
+        // Event listeners
+        document.getElementById('command-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                processCommand(this.value);
+                this.value = '';
+            }
+        });
+
+        document.getElementById('command-input').addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    this.value = commandHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    this.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    this.value = '';
+                }
+            }
+        });
+
+        // Click on links to interact
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('link-item')) {
+                const path = e.target.getAttribute('data-path');
+                if (path) {
+                    processCommand(`cat ${path}`);
+                }
+            }
+        });
+
+        // Initialize
+        window.addEventListener('load', function() {
+            initializeFileSystem();
+            printLine('╔══════════════════════════════════════════════════════════════╗', 'success');
+            printLine('║          SELAMAT DATANG DI REBER TERMINAL                    ║', 'success');
+            printLine('║     Sistem Integrasi Sumber Kode Aktif - Generatif AI        ║', 'success');
+            printLine('╚══════════════════════════════════════════════════════════════╝', 'success');
+            printLine('', '');
+            printLine('📂 Direktori aktif: /reberagent/reber', 'info');
+            printLine('🔗 Memuat 500+ link sistem kustom generatif...', 'info');
+            printLine('', '');
+            printLine('Ketik "help" untuk melihat daftar perintah yang tersedia.', 'help-text');
+            printLine('Ketik "links" untuk menampilkan semua link sistem.', 'help-text');
+            printLine('Ketik "tree" untuk melihat struktur folder.', 'help-text');
+            printLine('Ketik "status" untuk melihat status sistem.', 'help-text');
+            printLine('', '');
+        });
+    </script>
+</body>
+</html>
